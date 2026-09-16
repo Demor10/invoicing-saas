@@ -1,0 +1,235 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // pooled connection, used at runtime
+  directUrl = env("DIRECT_URL") // direct connection, used only for migrations
+}
+
+// ---------- Auth (NextAuth / Auth.js) ----------
+// Standard shape required by @auth/prisma-adapter, extended with our own fields.
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String? // null for OAuth-only users (e.g. Google sign-in)
+
+  // Business profile shown on invoices/proposals
+  businessName    String?
+  businessLogoUrl String?
+  businessAddress String?
+
+  // Simple counters used to generate sequential, per-user invoice/proposal numbers
+  nextInvoiceNumber  Int @default(1)
+  nextProposalNumber Int @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accounts  Account[]
+  sessions  Session[]
+  clients   Client[]
+  invoices  Invoice[]
+  proposals Proposal[]
+  subscription Subscription?
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ---------- Core domain ----------
+
+model Client {
+  id      String  @id @default(cuid())
+  userId  String
+  name    String
+  email   String
+  address String?
+  phone   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invoices  Invoice[]
+  proposals Proposal[]
+
+  @@index([userId])
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+}
+
+model Invoice {
+  id     String @id @default(cuid())
+  userId String
+  clientId String
+
+  // Sequential, human-facing number scoped to the user (e.g. "INV-0007")
+  number Int
+
+  status InvoiceStatus @default(DRAFT)
+
+  issueDate DateTime  @default(now())
+  dueDate   DateTime
+  paidAt    DateTime?
+
+  currency String @default("USD")
+  taxRate  Float  @default(0) // e.g. 7.5 for 7.5%
+
+  subtotal  Float @default(0)
+  taxAmount Float @default(0)
+  total     Float @default(0)
+
+  notes String?
+
+  // Unguessable token used in the public, no-login client-facing URL.
+  // Never expose the sequential `id`/`number` alone for access control.
+  publicToken String @unique @default(cuid())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client    Client            @relation(fields: [clientId], references: [id])
+  lineItems InvoiceLineItem[]
+
+  @@unique([userId, number])
+  @@index([userId])
+  @@index([clientId])
+}
+
+model InvoiceLineItem {
+  id          String @id @default(cuid())
+  invoiceId   String
+  description String
+  quantity    Float  @default(1)
+  rate        Float  @default(0)
+  amount      Float  @default(0) // quantity * rate, stored to avoid recompute drift
+  sortOrder   Int    @default(0)
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+}
+
+enum ProposalStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  DECLINED
+}
+
+model Proposal {
+  id       String @id @default(cuid())
+  userId   String
+  clientId String
+
+  number Int
+
+  status ProposalStatus @default(DRAFT)
+
+  issueDate  DateTime  @default(now())
+  expiryDate DateTime?
+  acceptedAt DateTime?
+
+  currency String @default("USD")
+  taxRate  Float  @default(0)
+
+  subtotal  Float @default(0)
+  taxAmount Float @default(0)
+  total     Float @default(0)
+
+  notes String?
+
+  publicToken String @unique @default(cuid())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client    Client             @relation(fields: [clientId], references: [id])
+  lineItems ProposalLineItem[]
+
+  @@unique([userId, number])
+  @@index([userId])
+  @@index([clientId])
+}
+
+model ProposalLineItem {
+  id          String @id @default(cuid())
+  proposalId  String
+  description String
+  quantity    Float  @default(1)
+  rate        Float  @default(0)
+  amount      Float  @default(0)
+  sortOrder   Int    @default(0)
+
+  proposal Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  @@index([proposalId])
+}
+
+// ---------- Billing (wired up later, once Stripe is set up) ----------
+
+enum SubscriptionPlan {
+  FREE
+  PAID
+}
+
+model Subscription {
+  id     String           @id @default(cuid())
+  userId String           @unique
+  plan   SubscriptionPlan @default(FREE)
+
+  stripeCustomerId     String? @unique
+  stripeSubscriptionId String? @unique
+  stripePriceId        String?
+  currentPeriodEnd     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
