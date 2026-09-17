@@ -25,7 +25,7 @@ accept a proposal.
 ## Build progress
 - [x] Project scaffold (Next.js + Tailwind + TypeScript)
 - [x] Prisma schema: User, Client, Invoice, InvoiceLineItem, Proposal, ProposalLineItem, Subscription
-- [ ] Auth & onboarding
+- [x] Auth & onboarding
 - [ ] Client management
 - [ ] Invoice builder
 - [ ] Dashboard
