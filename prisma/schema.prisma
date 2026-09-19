@@ -4,8 +4,6 @@ generator client {
 
 datasource db {
   provider  = "postgresql"
-  url       = env("DATABASE_URL") // pooled connection, used at runtime
-  directUrl = env("DIRECT_URL") // direct connection, used only for migrations
 }
 
 // ---------- Auth (NextAuth / Auth.js) ----------

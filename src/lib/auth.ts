@@ -4,16 +4,15 @@ import Google from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { authConfig } from "@/lib/auth.config";
 
-// Credentials login can't use adapter-managed (database) sessions — that's a
-// NextAuth restriction, not a bug — so we use JWT sessions everywhere. The
-// Prisma adapter is still used for Google OAuth account linking.
+// This is the full config — Prisma adapter, real providers, bcrypt — used by
+// API routes and server components (Node.js runtime). Middleware uses the
+// separate, edge-safe authConfig instead (see auth.config.ts and
+// middleware.ts) because it can't load Prisma's native dependencies.
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
   adapter: PrismaAdapter(prisma),
-  session: { strategy: "jwt" },
-  pages: {
-    signIn: "/login",
-  },
   providers: [
     Credentials({
       name: "credentials",

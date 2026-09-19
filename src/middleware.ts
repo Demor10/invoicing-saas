@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import NextAuth from "next-auth";
+import { authConfig } from "@/lib/auth.config";
+
+// Deliberately built from the edge-safe authConfig, NOT from "@/lib/auth" —
+// that full config pulls in Prisma's pg driver, which can't run in
+// middleware's Edge Runtime (see auth.config.ts for why).
+const { auth } = NextAuth(authConfig);
 
 // Public no matter what: the marketing/home page, login/signup, NextAuth's
 // own routes, and the client-facing invoice/proposal pages (accessed via an
