@@ -83,6 +83,12 @@ export default async function DashboardPage() {
         >
           New invoice
         </Link>
+        <Link
+          href="/proposals"
+          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        >
+          Proposals
+        </Link>
       </div>
 
       <div className="mt-8 grid grid-cols-3 gap-4">

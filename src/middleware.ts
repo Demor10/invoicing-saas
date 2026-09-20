@@ -15,6 +15,7 @@ const PUBLIC_PREFIXES = [
   "/api/auth",
   "/api/register",
   "/api/invoice/",
+  "/api/proposal/",
   "/invoice/",
   "/proposal/",
 ];
