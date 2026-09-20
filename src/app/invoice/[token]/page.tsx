@@ -131,10 +131,18 @@ export default async function PublicInvoicePage({
         </div>
       )}
 
-      <div className="mt-8 rounded-md border border-dashed border-gray-300 p-4 text-center text-sm text-gray-500">
-        {invoice.status === "PAID"
-          ? "This invoice has been paid. Thank you!"
-          : "Online payment isn't set up yet — you'll be able to pay this invoice here soon."}
+      <div className="mt-8 flex items-center justify-between rounded-md border border-dashed border-gray-300 p-4 text-sm text-gray-500">
+        <span>
+          {invoice.status === "PAID"
+            ? "This invoice has been paid. Thank you!"
+            : "Online payment isn't set up yet — you'll be able to pay this invoice here soon."}
+        </span>
+        <a
+          href={`/api/invoice/${invoice.publicToken}/pdf`}
+          className="font-medium text-gray-700 underline hover:text-gray-900"
+        >
+          Download PDF
+        </a>
       </div>
     </div>
   );

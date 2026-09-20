@@ -111,18 +111,26 @@ export default async function InvoiceDetailPage({
           ← Back to invoices
         </Link>
 
-        {invoice.status === "DRAFT" && (
-          <div className="flex items-center gap-4">
-            <Link
-              href={`/invoices/${invoice.id}/edit`}
-              className="text-sm font-medium text-gray-700 underline hover:text-gray-900"
-            >
-              Edit
-            </Link>
-            <DeleteInvoiceButton invoiceId={invoice.id} invoiceNumber={invoice.number} />
-            <MarkInvoiceSentButton invoiceId={invoice.id} />
-          </div>
-        )}
+        <div className="flex items-center gap-4">
+          <a
+            href={`/api/invoices/${invoice.id}/pdf`}
+            className="text-sm font-medium text-gray-700 underline hover:text-gray-900"
+          >
+            Download PDF
+          </a>
+          {invoice.status === "DRAFT" && (
+            <>
+              <Link
+                href={`/invoices/${invoice.id}/edit`}
+                className="text-sm font-medium text-gray-700 underline hover:text-gray-900"
+              >
+                Edit
+              </Link>
+              <DeleteInvoiceButton invoiceId={invoice.id} invoiceNumber={invoice.number} />
+              <MarkInvoiceSentButton invoiceId={invoice.id} />
+            </>
+          )}
+        </div>
       </div>
 
       {invoice.status !== "DRAFT" && (

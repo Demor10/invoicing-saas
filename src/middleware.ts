@@ -11,7 +11,13 @@ const { auth } = NextAuth(authConfig);
 // own routes, and the client-facing invoice/proposal pages (accessed via an
 // unguessable token, no login required by design).
 const PUBLIC_PATHS = ["/", "/login", "/signup"];
-const PUBLIC_PREFIXES = ["/api/auth", "/api/register", "/invoice/", "/proposal/"];
+const PUBLIC_PREFIXES = [
+  "/api/auth",
+  "/api/register",
+  "/api/invoice/",
+  "/invoice/",
+  "/proposal/",
+];
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
