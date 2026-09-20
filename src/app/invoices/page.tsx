@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getDisplayStatus } from "@/lib/invoice-status";
 
 const STATUS_STYLES: Record<string, string> = {
   DRAFT: "bg-gray-100 text-gray-700",
@@ -38,33 +39,36 @@ export default async function InvoicesPage() {
         </p>
       ) : (
         <ul className="mt-6 divide-y divide-gray-200 rounded-md border border-gray-200">
-          {invoices.map((invoice) => (
-            <li key={invoice.id}>
-              <Link
-                href={`/invoices/${invoice.id}`}
-                className="flex items-center justify-between px-4 py-3 hover:bg-gray-50"
-              >
-                <div>
-                  <p className="text-sm font-medium text-gray-900">
-                    #{invoice.number} — {invoice.client.name}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Due {invoice.dueDate.toLocaleDateString()}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm text-gray-700">
-                    {invoice.currency} {invoice.total.toFixed(2)}
-                  </span>
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[invoice.status]}`}
-                  >
-                    {invoice.status}
-                  </span>
-                </div>
-              </Link>
-            </li>
-          ))}
+          {invoices.map((invoice) => {
+            const displayStatus = getDisplayStatus(invoice.status, invoice.dueDate);
+            return (
+              <li key={invoice.id}>
+                <Link
+                  href={`/invoices/${invoice.id}`}
+                  className="flex items-center justify-between px-4 py-3 hover:bg-gray-50"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">
+                      #{invoice.number} — {invoice.client.name}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Due {invoice.dueDate.toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-gray-700">
+                      {invoice.currency} {invoice.total.toFixed(2)}
+                    </span>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[displayStatus]}`}
+                    >
+                      {displayStatus}
+                    </span>
+                  </div>
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       )}
 

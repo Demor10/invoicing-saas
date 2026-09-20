@@ -4,6 +4,9 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { MarkInvoiceSentButton } from "@/components/mark-invoice-sent-button";
 import { DeleteInvoiceButton } from "@/components/delete-invoice-button";
+import { PublicLinkField } from "@/components/public-link-field";
+import { getPublicUrl } from "@/lib/public-url";
+import { getDisplayStatus } from "@/lib/invoice-status";
 
 export default async function InvoiceDetailPage({
   params,
@@ -21,6 +24,9 @@ export default async function InvoiceDetailPage({
 
   if (!invoice) notFound();
 
+  const displayStatus = getDisplayStatus(invoice.status, invoice.dueDate);
+  const publicUrl = getPublicUrl(`/invoice/${invoice.publicToken}`);
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-10">
       <div className="flex items-start justify-between">
@@ -33,7 +39,7 @@ export default async function InvoiceDetailPage({
           </p>
         </div>
         <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
-          {invoice.status}
+          {displayStatus}
         </span>
       </div>
 
@@ -120,9 +126,21 @@ export default async function InvoiceDetailPage({
       </div>
 
       {invoice.status !== "DRAFT" && (
-        <p className="mt-4 text-right text-xs text-gray-400">
-          Sending a link to your client and collecting payment come in a later step.
-        </p>
+        <div className="mt-6 rounded-md border border-gray-200 p-4">
+          <p className="text-sm font-medium text-gray-700">Client-facing link</p>
+          <p className="mt-1 text-xs text-gray-500">
+            Anyone with this link can view the invoice — no login required. Automatic
+            emailing comes in a later step; for now, copy and send it yourself.
+          </p>
+          <div className="mt-3">
+            <PublicLinkField url={publicUrl} />
+          </div>
+          {invoice.status !== "PAID" && (
+            <p className="mt-2 text-xs text-gray-400">
+              Online payment isn&apos;t enabled yet — that&apos;s a later step too.
+            </p>
+          )}
+        </div>
       )}
     </div>
   );
