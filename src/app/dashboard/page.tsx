@@ -1,6 +1,7 @@
 import { auth, signOut } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -38,10 +39,15 @@ export default async function DashboardPage() {
       </div>
 
       <p className="mt-8 rounded-md border border-dashed border-gray-300 p-6 text-sm text-gray-500">
-        The real dashboard (invoices, clients, totals) is built in a later
-        step — this confirms auth, onboarding, and the session are all wired
-        up correctly.
+        The full dashboard (invoices, totals) is built in a later step.
       </p>
+
+      <Link
+        href="/clients"
+        className="mt-4 inline-block rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+      >
+        Manage clients
+      </Link>
     </div>
   );
 }
