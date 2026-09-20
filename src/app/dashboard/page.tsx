@@ -42,12 +42,20 @@ export default async function DashboardPage() {
         The full dashboard (invoices, totals) is built in a later step.
       </p>
 
-      <Link
-        href="/clients"
-        className="mt-4 inline-block rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
-      >
-        Manage clients
-      </Link>
+      <div className="mt-4 flex gap-3">
+        <Link
+          href="/clients"
+          className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+        >
+          Manage clients
+        </Link>
+        <Link
+          href="/invoices"
+          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        >
+          View invoices
+        </Link>
+      </div>
     </div>
   );
 }
