@@ -23,6 +23,13 @@ export function MarkProposalSentButton({ proposalId }: { proposalId: string }) {
       return;
     }
 
+    const data = await res.json().catch(() => null);
+    if (data?.emailResult?.success === false) {
+      alert(
+        `Proposal marked as sent, but the email couldn't be delivered:\n${data.emailResult.error}\n\nYou can retry from the proposal page using "Resend email."`
+      );
+    }
+
     router.refresh();
   };
 

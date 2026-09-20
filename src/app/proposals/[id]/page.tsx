@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { MarkProposalSentButton } from "@/components/mark-proposal-sent-button";
 import { DeleteProposalButton } from "@/components/delete-proposal-button";
 import { PublicLinkField } from "@/components/public-link-field";
+import { ResendEmailButton } from "@/components/resend-email-button";
 import { getPublicUrl } from "@/lib/public-url";
 
 const STATUS_STYLES: Record<string, string> = {
@@ -143,10 +144,14 @@ export default async function ProposalDetailPage({
         <div className="mt-6 rounded-md border border-gray-200 p-4">
           <p className="text-sm font-medium text-gray-700">Client-facing link</p>
           <p className="mt-1 text-xs text-gray-500">
-            Anyone with this link can view and respond to the proposal — no login required.
+            This was emailed to your client automatically. Anyone with the link can view
+            and respond to it — no login required.
           </p>
           <div className="mt-3">
             <PublicLinkField url={publicUrl} />
+          </div>
+          <div className="mt-3">
+            <ResendEmailButton resendUrl={`/api/proposals/${proposal.id}/resend-email`} />
           </div>
           {proposal.status === "ACCEPTED" && (
             <p className="mt-2 text-xs text-green-700">

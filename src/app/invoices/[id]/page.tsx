@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { MarkInvoiceSentButton } from "@/components/mark-invoice-sent-button";
 import { DeleteInvoiceButton } from "@/components/delete-invoice-button";
 import { PublicLinkField } from "@/components/public-link-field";
+import { ResendEmailButton } from "@/components/resend-email-button";
 import { getPublicUrl } from "@/lib/public-url";
 import { getDisplayStatus } from "@/lib/invoice-status";
 
@@ -137,11 +138,14 @@ export default async function InvoiceDetailPage({
         <div className="mt-6 rounded-md border border-gray-200 p-4">
           <p className="text-sm font-medium text-gray-700">Client-facing link</p>
           <p className="mt-1 text-xs text-gray-500">
-            Anyone with this link can view the invoice — no login required. Automatic
-            emailing comes in a later step; for now, copy and send it yourself.
+            This was emailed to your client automatically. Anyone with the link can
+            view it — no login required — so you can also copy and share it yourself.
           </p>
           <div className="mt-3">
             <PublicLinkField url={publicUrl} />
+          </div>
+          <div className="mt-3">
+            <ResendEmailButton resendUrl={`/api/invoices/${invoice.id}/resend-email`} />
           </div>
           {invoice.status !== "PAID" && (
             <p className="mt-2 text-xs text-gray-400">

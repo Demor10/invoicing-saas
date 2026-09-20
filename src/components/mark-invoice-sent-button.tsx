@@ -23,6 +23,17 @@ export function MarkInvoiceSentButton({ invoiceId }: { invoiceId: string }) {
       return;
     }
 
+    const data = await res.json().catch(() => null);
+    if (data?.emailResult?.success === false) {
+      // The status change already succeeded and this button is about to
+      // unmount (the invoice is no longer a draft) once we refresh, so a
+      // quietly-set error state would just vanish unseen. A blocking alert
+      // is unsophisticated but guarantees the failure is actually noticed.
+      alert(
+        `Invoice marked as sent, but the email couldn't be delivered:\n${data.emailResult.error}\n\nYou can retry from the invoice page using "Resend email."`
+      );
+    }
+
     router.refresh();
   };
 

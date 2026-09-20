@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { sendProposalEmail } from "@/lib/email/send-proposal-email";
 
 export async function POST(
   _req: Request,
@@ -14,6 +15,7 @@ export async function POST(
   const { id } = await params;
   const proposal = await prisma.proposal.findFirst({
     where: { id, userId: session.user.id },
+    include: { client: true, user: { select: { businessName: true } } },
   });
   if (!proposal) {
     return NextResponse.json({ error: "Proposal not found" }, { status: 404 });
@@ -30,5 +32,7 @@ export async function POST(
     data: { status: "SENT" },
   });
 
-  return NextResponse.json(updated);
+  const emailResult = await sendProposalEmail(proposal);
+
+  return NextResponse.json({ ...updated, emailResult });
 }
