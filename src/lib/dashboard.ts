@@ -1,4 +1,8 @@
 import type { InvoiceStatus } from "@prisma/client";
+import { type CurrencyTotal, addToTotals, sumAcrossCurrencies } from "@/lib/money";
+
+export type { CurrencyTotal } from "@/lib/money";
+export { formatTotals } from "@/lib/money";
 
 export type DashboardInvoice = {
   id: string;
@@ -10,29 +14,6 @@ export type DashboardInvoice = {
   paidAt: Date | null;
   client: { id: string; name: string };
 };
-
-export type CurrencyTotal = { currency: string; amount: number };
-
-function addToTotals(totals: CurrencyTotal[], currency: string, amount: number) {
-  const existing = totals.find((t) => t.currency === currency);
-  if (existing) {
-    existing.amount += amount;
-  } else {
-    totals.push({ currency, amount });
-  }
-}
-
-// Only used to rank the client breakdown by rough size — treats all
-// currencies as equal, which is wrong across currencies but fine as a sort
-// key for the common case of a single-currency freelancer.
-function sumAcrossCurrencies(totals: CurrencyTotal[]) {
-  return totals.reduce((sum, t) => sum + t.amount, 0);
-}
-
-export function formatTotals(totals: CurrencyTotal[]): string {
-  if (totals.length === 0) return "—";
-  return totals.map((t) => `${t.currency} ${t.amount.toFixed(2)}`).join(", ");
-}
 
 export function computeDashboard(invoices: DashboardInvoice[]) {
   const outstandingTotals: CurrencyTotal[] = [];

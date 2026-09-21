@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
+  provider = "postgresql"
 }
 
 // ---------- Auth (NextAuth / Auth.js) ----------
@@ -34,6 +34,8 @@ model User {
   clients   Client[]
   invoices  Invoice[]
   proposals Proposal[]
+  sales     Sale[]
+  expenses  Expense[]
   subscription Subscription?
 }
 
@@ -207,6 +209,48 @@ model ProposalLineItem {
   proposal Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
 
   @@index([proposalId])
+}
+
+// ---------- Ad-hoc sales & expenses (not tied to a formal invoice) ----------
+// Simple ledger entries for cash-sale/expense tracking, used by the
+// analytics feature to compute profit/loss. Deliberately no line items or
+// numbering — these are quick one-line records, not documents sent to a
+// client.
+
+model Sale {
+  id          String   @id @default(cuid())
+  userId      String
+  date        DateTime @default(now())
+  description String
+  amount      Float
+  currency    String   @default("USD")
+  category    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, date])
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  userId      String
+  date        DateTime @default(now())
+  description String
+  amount      Float
+  currency    String   @default("USD")
+  category    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, date])
 }
 
 // ---------- Billing (wired up later, once Stripe is set up) ----------
