@@ -1,11 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { ProposalForm } from "@/components/proposal-form";
 import type { ProposalFormValues } from "@/lib/validation/proposal";
 
 export function NewProposalForm({ clients }: { clients: { id: string; name: string }[] }) {
   const router = useRouter();
+  const [resetKey, setResetKey] = useState(0);
+  const [lastSaved, setLastSaved] = useState<{ id: string; number: number } | null>(null);
 
   const onSubmit = async (values: ProposalFormValues) => {
     const res = await fetch("/api/proposals", {
@@ -20,9 +24,22 @@ export function NewProposalForm({ clients }: { clients: { id: string; name: stri
     }
 
     const proposal = await res.json();
-    router.push(`/proposals/${proposal.id}`);
+    setLastSaved({ id: proposal.id, number: proposal.number });
+    setResetKey((key) => key + 1);
     router.refresh();
   };
 
-  return <ProposalForm clients={clients} onSubmit={onSubmit} />;
+  return (
+    <div>
+      {lastSaved && (
+        <div className="mb-4 flex items-center justify-between rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm">
+          <span className="text-green-800">Proposal #{lastSaved.number} saved.</span>
+          <Link href={`/proposals/${lastSaved.id}`} className="font-medium text-green-800 underline">
+            View it
+          </Link>
+        </div>
+      )}
+      <ProposalForm key={resetKey} clients={clients} onSubmit={onSubmit} />
+    </div>
+  );
 }
