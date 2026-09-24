@@ -10,12 +10,12 @@ export async function GET(req: Request) {
   }
 
   const { searchParams } = new URL(req.url);
-  const { report, businessName, aiNarrative } = await prepareExportData(
+  const { report, businessName, insights, forecast } = await prepareExportData(
     session.user.id,
     searchParams
   );
 
-  const buffer = await generateAnalyticsXlsx({ report, businessName, aiNarrative });
+  const buffer = await generateAnalyticsXlsx({ report, businessName, insights, forecast });
 
   return new NextResponse(Buffer.from(buffer), {
     headers: {

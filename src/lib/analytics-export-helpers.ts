@@ -1,13 +1,21 @@
 import { prisma } from "@/lib/prisma";
 import { isPaidUser } from "@/lib/subscription";
 import { computeAnalytics, type AnalyticsReport } from "@/lib/analytics";
+import { computeForecast, type Forecast } from "@/lib/forecast";
+import { sampleTransactionDescriptions } from "@/lib/qualitative";
 import { generateAnalyticsInsights } from "@/lib/ai/generate-insights";
+import type { AnalyticsInsights } from "@/lib/ai/types";
 import { resolveRange, type RangePreset } from "@/lib/date-ranges";
 
 export async function prepareExportData(
   userId: string,
   searchParams: URLSearchParams
-): Promise<{ report: AnalyticsReport; businessName: string; aiNarrative: string | null }> {
+): Promise<{
+  report: AnalyticsReport;
+  businessName: string;
+  insights: AnalyticsInsights | null;
+  forecast: Forecast | null;
+}> {
   const preset = (searchParams.get("preset") as RangePreset) || "month";
   const customStart = searchParams.get("start") ?? undefined;
   const customEnd = searchParams.get("end") ?? undefined;
@@ -20,23 +28,28 @@ export async function prepareExportData(
   ]);
 
   const businessName = user?.businessName ?? "Business";
+  const forecast = computeForecast(report.timeSeries);
 
   // Same gate as the on-screen analytics page: free users get the summary
-  // and trend, not category breakdowns or the AI narrative. Rather than
-  // duplicating that check in each export route, it's applied once here by
-  // stripping the gated pieces before they ever reach a generator.
+  // and trend, not category breakdowns, the forecast, or the AI narrative.
+  // Rather than duplicating that check in each export route, it's applied
+  // once here by stripping the gated pieces before they reach a generator.
   if (!paid) {
     return {
       report: { ...report, salesByCategory: [], expensesByCategory: [] },
       businessName,
-      aiNarrative: null,
+      insights: null,
+      forecast: null,
     };
   }
 
-  const insights = await generateAnalyticsInsights(report, businessName);
+  const samples = await sampleTransactionDescriptions(userId, start, end);
+  const result = await generateAnalyticsInsights(report, businessName, forecast, samples);
+
   return {
     report,
     businessName,
-    aiNarrative: insights.success ? insights.text : null,
+    insights: result.success ? result.insights : null,
+    forecast,
   };
 }

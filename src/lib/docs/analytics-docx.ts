@@ -3,21 +3,33 @@ import {
   Packer,
   Paragraph,
   TextRun,
+  ImageRun,
   Table,
   TableRow,
   TableCell,
   HeadingLevel,
   WidthType,
 } from "docx";
-import type { AnalyticsReport } from "@/lib/analytics";
+import type { AnalyticsReport, CategoryBreakdownPoint } from "@/lib/analytics";
+import type { AnalyticsInsights } from "@/lib/ai/types";
+import type { Forecast } from "@/lib/forecast";
 import { formatTotals } from "@/lib/money";
+import { renderGroupedBarChartPng, renderSingleSeriesBarChartPng } from "@/lib/charts/render-bar-chart";
+
+const SECTIONS: { key: keyof AnalyticsInsights; title: string }[] = [
+  { key: "descriptive", title: "Descriptive Analytics — What Happened" },
+  { key: "diagnostic", title: "Diagnostic Analytics — Why It Happened" },
+  { key: "predictive", title: "Predictive Analytics — What's Likely Next" },
+  { key: "prescriptive", title: "Prescriptive Analytics — What To Do" },
+];
 
 export async function generateAnalyticsDocx(params: {
   report: AnalyticsReport;
   businessName: string;
-  aiNarrative: string | null;
+  insights: AnalyticsInsights | null;
+  forecast: Forecast | null;
 }): Promise<Buffer> {
-  const { report, businessName, aiNarrative } = params;
+  const { report, businessName, insights, forecast } = params;
 
   const children: (Paragraph | Table)[] = [
     new Paragraph({ text: businessName, heading: HeadingLevel.HEADING_1 }),
@@ -39,6 +51,22 @@ export async function generateAnalyticsDocx(params: {
 
   if (report.timeSeries.length > 0) {
     children.push(new Paragraph({ text: "Trend", heading: HeadingLevel.HEADING_2 }));
+    const chartPng = renderGroupedBarChartPng({
+      seriesA: report.timeSeries.map((p) => p.revenue),
+      seriesB: report.timeSeries.map((p) => p.expenses),
+    });
+    children.push(chartImageParagraph(chartPng, 500, 214));
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({ text: "■ ", color: "111827", bold: true }),
+          new TextRun({ text: "Revenue   " }),
+          new TextRun({ text: "■ ", color: "DC2626", bold: true }),
+          new TextRun({ text: "Expenses" }),
+        ],
+      })
+    );
+    children.push(new Paragraph({ text: "" }));
     children.push(
       dataTable(
         ["Period", `Revenue (${report.currency})`, `Expenses (${report.currency})`, `Profit (${report.currency})`],
@@ -53,37 +81,71 @@ export async function generateAnalyticsDocx(params: {
     children.push(new Paragraph({ text: "" }));
   }
 
-  if (report.salesByCategory.length > 0) {
-    children.push(new Paragraph({ text: "Revenue by category", heading: HeadingLevel.HEADING_2 }));
-    children.push(
-      dataTable(
-        ["Category", `Amount (${report.currency})`],
-        report.salesByCategory.map((c) => [c.category, c.amount.toFixed(2)])
-      )
-    );
-    children.push(new Paragraph({ text: "" }));
-  }
+  pushCategorySection(children, "Revenue by category", report.salesByCategory, report.currency, [17, 24, 39]);
+  pushCategorySection(children, "Expenses by category", report.expensesByCategory, report.currency, [220, 38, 38]);
 
-  if (report.expensesByCategory.length > 0) {
-    children.push(new Paragraph({ text: "Expenses by category", heading: HeadingLevel.HEADING_2 }));
-    children.push(
-      dataTable(
-        ["Category", `Amount (${report.currency})`],
-        report.expensesByCategory.map((c) => [c.category, c.amount.toFixed(2)])
-      )
-    );
-    children.push(new Paragraph({ text: "" }));
-  }
+  if (insights) {
+    for (const section of SECTIONS) {
+      const text = insights[section.key];
+      if (!text) continue;
 
-  if (aiNarrative) {
-    children.push(new Paragraph({ text: "AI Analysis", heading: HeadingLevel.HEADING_2 }));
-    for (const paragraph of aiNarrative.split("\n").filter(Boolean)) {
-      children.push(new Paragraph({ text: paragraph }));
+      children.push(new Paragraph({ text: section.title, heading: HeadingLevel.HEADING_2 }));
+
+      if (section.key === "predictive" && forecast) {
+        children.push(
+          new Paragraph({
+            children: [
+              new TextRun({
+                italics: true,
+                color: "666666",
+                text: `Projected ${forecast.nextPeriodLabel}: revenue ${forecast.projectedRevenue.toFixed(2)}, expenses ${forecast.projectedExpenses.toFixed(2)}, profit ${forecast.projectedProfit.toFixed(2)} (confidence: ${forecast.confidence})`,
+              }),
+            ],
+          })
+        );
+      }
+
+      for (const paragraph of text.split("\n").filter(Boolean)) {
+        children.push(new Paragraph({ text: paragraph }));
+      }
     }
   }
 
   const doc = new Document({ sections: [{ children }] });
   return Packer.toBuffer(doc);
+}
+
+function pushCategorySection(
+  children: (Paragraph | Table)[],
+  title: string,
+  items: CategoryBreakdownPoint[],
+  currency: string,
+  color: [number, number, number]
+) {
+  if (items.length === 0) return;
+  children.push(new Paragraph({ text: title, heading: HeadingLevel.HEADING_2 }));
+  const chartPng = renderSingleSeriesBarChartPng({ values: items.map((c) => c.amount), color });
+  children.push(chartImageParagraph(chartPng, 450, Math.max(90, items.length * 20)));
+  children.push(new Paragraph({ text: "" }));
+  children.push(
+    dataTable(
+      ["Category", `Amount (${currency})`],
+      items.map((c) => [c.category, c.amount.toFixed(2)])
+    )
+  );
+  children.push(new Paragraph({ text: "" }));
+}
+
+function chartImageParagraph(png: Buffer, width: number, height: number): Paragraph {
+  return new Paragraph({
+    children: [
+      new ImageRun({
+        type: "png",
+        data: png,
+        transformation: { width, height },
+      }),
+    ],
+  });
 }
 
 function summaryRow(label: string, value: string): Paragraph {

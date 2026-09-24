@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isPaidUser } from "@/lib/subscription";
 import { computeAnalytics } from "@/lib/analytics";
+import { computeForecast } from "@/lib/forecast";
+import { sampleTransactionDescriptions } from "@/lib/qualitative";
 import { generateAnalyticsInsights } from "@/lib/ai/generate-insights";
 import { resolveRange, type RangePreset } from "@/lib/date-ranges";
 
@@ -25,16 +27,24 @@ export async function GET(req: Request) {
   const customEnd = url.searchParams.get("end") ?? undefined;
   const { start, end } = resolveRange(preset, customStart, customEnd);
 
-  const [user, report] = await Promise.all([
+  const [user, report, samples] = await Promise.all([
     prisma.user.findUnique({ where: { id: session.user.id }, select: { businessName: true } }),
     computeAnalytics(session.user.id, start, end),
+    sampleTransactionDescriptions(session.user.id, start, end),
   ]);
 
-  const result = await generateAnalyticsInsights(report, user?.businessName ?? "your business");
+  const forecast = computeForecast(report.timeSeries);
+
+  const result = await generateAnalyticsInsights(
+    report,
+    user?.businessName ?? "your business",
+    forecast,
+    samples
+  );
 
   if (!result.success) {
     return NextResponse.json({ error: result.error }, { status: 502 });
   }
 
-  return NextResponse.json({ text: result.text });
+  return NextResponse.json({ insights: result.insights, forecast });
 }

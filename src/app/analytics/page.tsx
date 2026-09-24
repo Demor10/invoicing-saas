@@ -99,7 +99,12 @@ export default async function AnalyticsPage({
           </div>
 
           <div className="mt-8">
-            <h2 className="text-sm font-semibold text-gray-900">AI analysis</h2>
+            <h2 className="text-sm font-semibold text-gray-900">
+              Full analysis
+              <span className="ml-2 font-normal text-gray-400">
+                Descriptive → Diagnostic → Predictive → Prescriptive
+              </span>
+            </h2>
             <div className="mt-3 rounded-md border border-gray-200 p-4">
               {/* key forces a fresh mount (and thus a fresh "loading" state)
                   whenever the selected date range changes, rather than
@@ -111,8 +116,8 @@ export default async function AnalyticsPage({
         </>
       ) : (
         <div className="mt-8 rounded-md border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500">
-          Category breakdowns and an AI-written analysis of your numbers are available on the
-          paid plan.
+          Category breakdowns and a full descriptive → diagnostic → predictive → prescriptive
+          analysis of your numbers are available on the paid plan.
         </div>
       )}
 

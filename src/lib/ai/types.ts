@@ -5,4 +5,15 @@ export interface InsightsProvider {
   generateNarrative(prompt: string): Promise<string>;
 }
 
-export type InsightsResult = { success: true; text: string } | { success: false; error: string };
+// The four classic business-analytics phases, in the order they should be
+// read: what happened, why, what's likely next, what to do about it.
+export type AnalyticsInsights = {
+  descriptive: string;
+  diagnostic: string;
+  predictive: string;
+  prescriptive: string;
+};
+
+export type InsightsResult =
+  | { success: true; insights: AnalyticsInsights }
+  | { success: false; error: string };
