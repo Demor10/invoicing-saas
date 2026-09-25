@@ -107,6 +107,12 @@ export default async function DashboardPage() {
         >
           Analytics
         </Link>
+        <Link
+          href="/import"
+          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        >
+          Import file
+        </Link>
       </div>
 
       <div className="mt-8 grid grid-cols-3 gap-4">

@@ -12,6 +12,13 @@ export type TimeSeriesPoint = {
 
 export type CategoryBreakdownPoint = { category: string; amount: number };
 
+export type MoneyEntry = {
+  amount: number;
+  currency: string;
+  date: Date;
+  category?: string | null;
+};
+
 export type AnalyticsReport = {
   range: { start: Date; end: Date };
   // The single currency driving the chart/category data below — combining
@@ -30,39 +37,23 @@ export type AnalyticsReport = {
   expensesByCategory: CategoryBreakdownPoint[];
 };
 
-export async function computeAnalytics(
-  userId: string,
+// Pure aggregation logic — no database access, so it works equally for a
+// user's real Sales/Expenses/PAID invoices (see computeAnalytics below) and
+// for one-off uploaded-file data that's never touched the database (see
+// src/lib/import). Keeping this pure also makes it directly testable.
+export function computeAnalyticsFromEntries(
+  revenueEntries: MoneyEntry[],
+  expenseEntries: MoneyEntry[],
   start: Date,
   end: Date
-): Promise<AnalyticsReport> {
-  const [sales, expenses, paidInvoicesRaw] = await Promise.all([
-    prisma.sale.findMany({ where: { userId, date: { gte: start, lte: end } } }),
-    prisma.expense.findMany({ where: { userId, date: { gte: start, lte: end } } }),
-    prisma.invoice.findMany({
-      where: { userId, status: "PAID", paidAt: { gte: start, lte: end } },
-      select: { total: true, currency: true, paidAt: true },
-    }),
-  ]);
-
-  // Defensive filter: a PAID invoice should always have paidAt set (the
-  // Stripe webhook we'll build later sets both together), but don't assume
-  // it under a non-null cast — just skip anything inconsistent.
-  const paidInvoices = paidInvoicesRaw.filter(
-    (i): i is typeof i & { paidAt: Date } => i.paidAt !== null
-  );
-
-  const revenueEntries = [
-    ...sales.map((s) => ({ amount: s.amount, currency: s.currency, date: s.date })),
-    ...paidInvoices.map((i) => ({ amount: i.total, currency: i.currency, date: i.paidAt })),
-  ];
-
+): AnalyticsReport {
   const revenueTotals = groupByCurrency(
     revenueEntries,
     (e) => e.amount,
     (e) => e.currency
   );
   const expenseTotals = groupByCurrency(
-    expenses,
+    expenseEntries,
     (e) => e.amount,
     (e) => e.currency
   );
@@ -78,7 +69,7 @@ export async function computeAnalytics(
   }
 
   const volumeByCurrency = new Map<string, number>();
-  for (const e of [...revenueEntries, ...expenses]) {
+  for (const e of [...revenueEntries, ...expenseEntries]) {
     volumeByCurrency.set(e.currency, (volumeByCurrency.get(e.currency) ?? 0) + Math.abs(e.amount));
   }
   const currencies = Array.from(volumeByCurrency.keys());
@@ -104,7 +95,7 @@ export async function computeAnalytics(
     if (entry.currency !== dominantCurrency) continue;
     getBucket(entry.date).revenue += entry.amount;
   }
-  for (const entry of expenses) {
+  for (const entry of expenseEntries) {
     if (entry.currency !== dominantCurrency) continue;
     getBucket(entry.date).expenses += entry.amount;
   }
@@ -115,10 +106,10 @@ export async function computeAnalytics(
   const timeSeries = Array.from(buckets.values()).sort((a, b) => a.key.localeCompare(b.key));
 
   const salesByCategory = groupCategoryTotals(
-    sales.filter((s) => s.currency === dominantCurrency)
+    revenueEntries.filter((e) => e.currency === dominantCurrency)
   );
   const expensesByCategory = groupCategoryTotals(
-    expenses.filter((e) => e.currency === dominantCurrency)
+    expenseEntries.filter((e) => e.currency === dominantCurrency)
   );
 
   return {
@@ -135,8 +126,43 @@ export async function computeAnalytics(
   };
 }
 
+export async function computeAnalytics(
+  userId: string,
+  start: Date,
+  end: Date
+): Promise<AnalyticsReport> {
+  const [sales, expenses, paidInvoicesRaw] = await Promise.all([
+    prisma.sale.findMany({ where: { userId, date: { gte: start, lte: end } } }),
+    prisma.expense.findMany({ where: { userId, date: { gte: start, lte: end } } }),
+    prisma.invoice.findMany({
+      where: { userId, status: "PAID", paidAt: { gte: start, lte: end } },
+      select: { total: true, currency: true, paidAt: true },
+    }),
+  ]);
+
+  // Defensive filter: a PAID invoice should always have paidAt set (the
+  // Stripe webhook we'll build later sets both together), but don't assume
+  // it under a non-null cast — just skip anything inconsistent.
+  const paidInvoices = paidInvoicesRaw.filter(
+    (i): i is typeof i & { paidAt: Date } => i.paidAt !== null
+  );
+
+  const revenueEntries: MoneyEntry[] = [
+    ...sales.map((s) => ({ amount: s.amount, currency: s.currency, date: s.date, category: s.category })),
+    ...paidInvoices.map((i) => ({ amount: i.total, currency: i.currency, date: i.paidAt })),
+  ];
+  const expenseEntries: MoneyEntry[] = expenses.map((e) => ({
+    amount: e.amount,
+    currency: e.currency,
+    date: e.date,
+    category: e.category,
+  }));
+
+  return computeAnalyticsFromEntries(revenueEntries, expenseEntries, start, end);
+}
+
 function groupCategoryTotals(
-  entries: { category: string | null; amount: number }[]
+  entries: { category?: string | null; amount: number }[]
 ): CategoryBreakdownPoint[] {
   const map = new Map<string, number>();
   for (const entry of entries) {
